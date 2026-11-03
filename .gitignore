@@ -1,0 +1,20 @@
+# 1. Direktori cache dan binary provider
+**/.terraform/
+
+# 2. File state lokal dan backup state
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# 3. File variabel konfigurasi (berisi data sensitif/spesifik lokal)
+*.tfvars
+*.tfvars.json
+
+# 4. Crash log (jika terjadi error internal pada terraform)
+crash.log
+crash.*.log
+
+# 5. Pengecualian: Kunci versi provider tetap wajib dicatat di Git
+!.terraform.lock.hcl
+
+file-iac-saya.txt
