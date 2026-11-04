@@ -1,0 +1,101 @@
+name: "Terraform CI/CD - Staging"
+
+on:
+  # Pipeline berjalan saat ada Push ke main (Merge dari PR)
+  push:
+    branches:
+      - main
+    paths:
+      - 'staging/resource/**'
+  
+  # Pipeline berjalan saat ada Pull Request menuju main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'staging/resource/**'
+
+env:
+  TF_WORKING_DIR: 'staging/resource'
+
+# Izin khusus (Mutlak dibutuhkan untuk WIF OIDC dan komentar PR)
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write 
+
+jobs:
+  terraform:
+    name: 'Terraform Provisioning'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud (WIF)
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+        service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.5.0" # Sesuaikan dengan versi lokal Anda jika perlu
+
+    - name: Terraform Init
+      id: init
+      run: terraform init
+
+    - name: Terraform Validate
+      id: validate
+      run: terraform validate -no-color
+
+    - name: Terraform Plan
+      id: plan
+      if: github.event_name == 'pull_request'
+      run: terraform plan -no-color
+      continue-on-error: true
+
+    - name: Tulis Komentar Hasil Plan ke Pull Request
+      uses: actions/github-script@v7
+      if: github.event_name == 'pull_request'
+      env:
+        PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const output = `#### 🏗️ Pratinjau Infrastruktur Staging (Terraform)
+          * **Initialization:** \`${{ steps.init.outcome }}\`
+          * **Validation:** \`${{ steps.validate.outcome }}\`
+          * **Plan:** \`${{ steps.plan.outcome }}\`
+
+          <details><summary>Tampilkan Log Detail Terraform Plan</summary>
+
+          \`\`\`\n
+          ${process.env.PLAN}
+          \`\`\`
+
+          </details>
+
+          *Aksi dipicu oleh: @${{ github.actor }}*`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: output
+          })
+
+    - name: Blokir PR jika Plan Gagal
+      if: steps.plan.outcome == 'failure'
+      run: exit 1
+
+    - name: Terraform Apply (Hanya saat di-Merge ke Main)
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: terraform apply -auto-approve -input=false

@@ -14,6 +14,10 @@
 crash.log
 crash.*.log
 
+# Kredensial lokal (Pencegahan bocornya JSON key jika tidak sengaja terbuat)
+*.json
+*.pem
+
 # 5. Pengecualian: Kunci versi provider tetap wajib dicatat di Git
 !.terraform.lock.hcl
 
