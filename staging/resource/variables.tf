@@ -54,3 +54,9 @@ variable "vms" {
   }))
   default = {}
 }
+
+variable "db_password" {
+  description = "Password utama untuk database PostgreSQL LMS Staging"
+  type        = string
+  sensitive   = true
+}
