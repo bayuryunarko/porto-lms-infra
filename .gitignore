@@ -7,7 +7,7 @@
 *.tfstate.backup
 
 # 3. File variabel konfigurasi (berisi data sensitif/spesifik lokal)
-*.tfvars
+# *.tfvars
 *.tfvars.json
 
 # 4. Crash log (jika terjadi error internal pada terraform)
